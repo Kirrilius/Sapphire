@@ -244,6 +244,7 @@ namespace Sapphire::Network::Packets::Server
       uint8_t rank;
       uint16_t padding;
       uint8_t lsName[20];
+      uint8_t unk[16];
     } entry[8];
   };
 
@@ -440,15 +441,25 @@ namespace Sapphire::Network::Packets::Server
   {
     uint32_t unknown;
     uint32_t actor_id;
-    uint8_t unknown1;
-    uint8_t unknown2;
-    uint16_t padding1;
+    //uint8_t unknown1;
+    //uint8_t unknown2;
+    //uint16_t padding1;
+    //uint32_t current_hp;
+    //uint16_t current_mp;
+    //uint16_t current_tp;
+    //uint32_t max_hp;
+    //uint16_t max_mp;
+    //uint16_t max_something;
     uint32_t current_hp;
-    uint16_t current_mp;
-    uint16_t current_tp;
     uint32_t max_hp;
+    uint16_t current_mp;
+    uint16_t unknown1;
     uint16_t max_mp;
-    uint16_t max_something;
+    uint8_t unknown2;
+    uint8_t classId;
+    uint8_t unknown4;
+    uint8_t unkFlag;
+    uint16_t unknown6;
 
     struct StatusEntry
     {
@@ -461,7 +472,7 @@ namespace Sapphire::Network::Packets::Server
       uint32_t sourceActorId;
     } statusEntries[4];
 
-    uint32_t unknown4;
+    uint32_t unknown7;
   };
 
   /**
@@ -526,33 +537,6 @@ namespace Sapphire::Network::Packets::Server
     /* 0012 */ uint32_t unknown_12;
   };
 
-
-  /**
-  * Structural representation of the packet sent by the server
-  * for battle actions
-  */
-  struct EffectHeader
-  {
-    uint64_t animationTargetId; // who the animation targets
-
-    uint32_t actionId; // what the casting player casts, shown in battle log/ui
-    uint32_t globalEffectCounter; // seems to only increment on retail?
-
-    float animationLockTime; // maybe? doesn't seem to do anything
-    uint32_t someTargetId; // always 00 00 00 E0, 0x0E000000 is the internal def for INVALID TARGET ID
-
-    uint16_t hiddenAnimation; // if 0, always shows animation, otherwise hides it. counts up by 1 for each animation skipped on a caster
-    uint16_t rotation;
-    uint16_t actionAnimationId; // the animation that is played by the casting character
-    uint8_t variation; // variation in the animation
-    Common::ActionEffectDisplayType effectDisplayType;
-
-    uint8_t unknown20; // is read by handler, runs code which gets the LODWORD of animationLockTime (wtf?)
-    uint8_t effectCount; // ignores effects if 0, otherwise parses all of them
-    uint16_t padding_21;
-
-  };
-
   struct FFXIVIpcEffect : FFXIVIpcBasePacket< Effect >
   {
     uint64_t animationTargetId; // who the animation targets
@@ -597,17 +581,35 @@ namespace Sapphire::Network::Packets::Server
   template< int size >
   struct FFXIVIpcAoeEffect
   {
-    EffectHeader header;
+    uint64_t animationTargetId; // who the animation targets
 
-    Common::EffectEntry effects[size];
+    uint32_t actionId; // what the casting player casts, shown in battle log/ui
+    uint32_t globalSequence; // seems to only increment on retail?
+
+    float animationLockTime; // maybe? doesn't seem to do anything
+    uint32_t someTargetId; // always 00 00 00 E0, 0x0E000000 is the internal def for INVALID TARGET ID
+
+    uint16_t sourceSequence; // if 0, always shows animation, otherwise hides it. counts up by 1 for each animation skipped on a caster
+    uint16_t rotation;
+    uint16_t actionAnimationId; // the animation that is played by the casting character
+    uint8_t variation; // variation in the animation
+    Common::ActionEffectDisplayType effectDisplayType;
+
+    uint8_t unknown20; // is read by handler, runs code which gets the LODWORD of animationLockTime (wtf?)
+    uint8_t effectCount; // ignores effects if 0, otherwise parses all of them
+    uint16_t padding_21[3];
+    uint16_t padding;
+
+    struct
+    {
+      Common::EffectEntry entries[8];
+    } effects[size];
 
     uint16_t padding_6A[3];
 
-    uint32_t effectTargetId[size];
-    Common::FFXIVARR_POSITION3 position;
-    uint32_t effectFlags;
-
-    uint32_t padding_78;
+    uint64_t effectTargetId[size];
+    uint16_t unkFlag[3]; // all 0x7FFF
+    uint16_t unk[3];
   };
 
   struct FFXIVIpcAoeEffect8 :
@@ -694,8 +696,8 @@ namespace Sapphire::Network::Packets::Server
     uint8_t mountFeet;
     uint8_t mountColor;
     uint8_t scale;
-    uint32_t u29b;
-    uint32_t u30b;
+    uint32_t elementalLevel;
+    uint32_t element;
     Common::StatusEffect effect[30];
     Common::FFXIVARR_POSITION3 pos;
     uint32_t models[10];
@@ -930,8 +932,10 @@ namespace Sapphire::Network::Packets::Server
     uint32_t unknown10;
     uint32_t unknown11;
     uint32_t unknown12[4];
+    uint32_t unknown13[3];
     Common::FFXIVARR_POSITION3 pos;
-    uint32_t unknown13;
+    uint32_t unknown14[3];
+    uint32_t unknown15;
   };
 
 
@@ -1028,6 +1032,7 @@ namespace Sapphire::Network::Packets::Server
     unsigned char companionHealRank;
     unsigned char u19[2];
     unsigned char mountGuideMask[19];
+    uint8_t unk1[9];
     char name[32];
     unsigned char unknownOword[16];
     unsigned char unknownOw;
@@ -1407,11 +1412,24 @@ namespace Sapphire::Network::Packets::Server
     uint8_t unknown[8];
   };
 
+  template< int ArgCount >
+  struct FFXIVIpcEventPlayN
+  {
+    uint64_t actorId;
+    uint32_t eventId;
+    uint16_t scene;
+    uint16_t padding;
+    uint32_t sceneFlags;
+    uint8_t paramCount;
+    uint8_t padding2[3];
+    uint32_t params[ArgCount];
+  };
+
   /**
   * Structural representation of the packet sent by the server
   * to play an event
   */
-  struct FFXIVIpcDirectorPlayScene : FFXIVIpcBasePacket< DirectorPlayScene >
+  struct FFXIVIpcDirectorPlayScene : FFXIVIpcBasePacket< EventPlay32 >
   {
     uint64_t actorId;
     uint32_t eventId;
@@ -1440,15 +1458,10 @@ namespace Sapphire::Network::Packets::Server
     /* 000C */ uint32_t padding1;
   };
 
-  struct FFXIVIpcEventOpenGilShop : FFXIVIpcBasePacket< EventOpenGilShop >
+  struct FFXIVIpcEventPlay255 :
+    FFXIVIpcBasePacket< EventPlay255 >,
+    FFXIVIpcEventPlayN< 255 >
   {
-    uint64_t actorId;
-    uint32_t eventId;
-    uint16_t scene;
-    uint16_t padding;
-    uint32_t sceneFlags;
-
-    uint32_t unknown_wtf[0x101];
   };
 
 
@@ -1496,7 +1509,7 @@ namespace Sapphire::Network::Packets::Server
   struct FFXIVIpcQuestCompleteList : FFXIVIpcBasePacket< QuestCompleteList >
   {
     uint8_t questCompleteMask[480];
-    uint8_t unknownCompleteMask[32];
+    uint8_t unknownCompleteMask[80];
   };
 
   /**
@@ -1551,10 +1564,9 @@ namespace Sapphire::Network::Packets::Server
   */
   struct FFXIVIpcDiscovery : FFXIVIpcBasePacket< Discovery >
   {
-    /* 0000 */ uint32_t map_part_id;
-    /* 0004 */ uint32_t map_id;
+    /* 0000 */ uint32_t mapPartId;
+    /* 0004 */ uint32_t mapId;
   };
-
 
   /**
   * UNKOWN TYPE

@@ -3,6 +3,9 @@
 #include <Util/UtilMath.h>
 #include <Logging/Logger.h>
 #include <Exd/ExdDataGenerated.h>
+#include <datReader/DatCategories/bg/LgbTypes.h>
+#include <datReader/DatCategories/bg/lgb.h>
+
 #include <Network/PacketContainer.h>
 #include <Network/CommonActorControl.h>
 #include <Network/PacketWrappers/EffectPacket.h>
@@ -19,6 +22,7 @@
 #include "Territory/Territory.h"
 #include "Territory/ZonePosition.h"
 #include "Territory/InstanceContent.h"
+#include "Territory/InstanceObjectCache.h"
 #include "Territory/Land.h"
 
 #include "Network/GameConnection.h"
@@ -76,7 +80,8 @@ Sapphire::Entity::Player::Player( FrameworkPtr pFw ) :
   m_emoteMode( 0 ),
   m_directorInitialized( false ),
   m_onEnterEventDone( false ),
-  m_falling( false )
+  m_falling( false ),
+  m_pQueuedAction( nullptr )
 {
   m_id = 0;
   m_currentStance = Stance::Passive;
@@ -268,8 +273,8 @@ void Sapphire::Entity::Player::calculateStats()
                                               tribeInfo->iNT );
   m_baseStats.mnd = static_cast< uint32_t >( base * ( static_cast< float >( classInfo->modifierMind ) / 100 ) +
                                              tribeInfo->mND );
-  m_baseStats.pie = static_cast< uint32_t >( base * ( static_cast< float >( classInfo->modifierPiety ) / 100 ) +
-                                             tribeInfo->pIE );
+  /*m_baseStats.pie = static_cast< uint32_t >( base * ( static_cast< float >( classInfo->modifierPiety ) / 100 ) +
+                                             tribeInfo->pIE );*/
 
   m_baseStats.determination = static_cast< uint32_t >( base );
   m_baseStats.pie = static_cast< uint32_t >( base );
@@ -345,12 +350,12 @@ void Sapphire::Entity::Player::teleport( uint16_t aetheryteId, uint8_t type )
   auto data = pExdData->get< Sapphire::Data::Aetheryte >( aetheryteId );
 
   if( data == nullptr )
-  {
     return;
-  }
 
   setStateFlag( PlayerStateFlag::BetweenAreas );
-  auto targetPos = pTeriMgr->getTerritoryPosition( data->level.at( 0 ) );
+
+  auto pInstanceObjectCache = m_pFw->get< InstanceObjectCache >();
+  auto pop = pInstanceObjectCache->getPopRange( data->territory, data->level[ 0 ] );
 
   Common::FFXIVARR_POSITION3 pos;
   pos.x = 0;
@@ -358,10 +363,18 @@ void Sapphire::Entity::Player::teleport( uint16_t aetheryteId, uint8_t type )
   pos.z = 0;
   float rot = 0;
 
-  if( targetPos != nullptr )
+  if( pop )
   {
-    pos = targetPos->getTargetPosition();
-    rot = targetPos->getTargetRotation();
+    sendDebug( "Teleport: popRange {0} found!", data->level.at( 0 ) );
+
+    pos.x = pop->header.transform.translation.x;
+    pos.y = pop->header.transform.translation.y;
+    pos.z = pop->header.transform.translation.z;
+    rot = pop->header.transform.rotation.y;
+  }
+  else
+  {
+    sendDebug( "Teleport: popRange {0} not found in {1}!", data->level[ 0 ], data->territory );
   }
 
   sendDebug( "Teleport: {0} {1} ({2})",
@@ -372,7 +385,7 @@ void Sapphire::Entity::Player::teleport( uint16_t aetheryteId, uint8_t type )
   // TODO: this should be simplified and a type created in server_common/common.h.
   if( type == 1 ) // teleport
   {
-    prepareZoning( data->territory, true, 1, 112 ); // TODO: Really?
+    prepareZoning( data->territory, true, 1, 0 ); // TODO: Really?
     sendToInRangeSet( makeActorControl( getId(), ActorDespawnEffect, 0x04 ) );
     setZoningType( Common::ZoneingType::Teleport );
   }
@@ -1572,10 +1585,10 @@ void Sapphire::Entity::Player::autoAttack( CharaPtr pTarget )
     effectPacket->setRotation( Util::floatToUInt16Rot( getRot() ) );
 
     Common::EffectEntry entry{};
-    entry.value = damage;
+    entry.value = damage.first;
     entry.effectType = Common::ActionEffectType::Damage;
-    entry.hitSeverity = Common::ActionHitSeverityType::NormalDamage;
-    entry.param = 0x72;
+    entry.param0 = static_cast< uint8_t >( damage.second );
+    entry.param2 = 0x72;
 
     effectPacket->addEffect( entry );
 
@@ -1587,10 +1600,10 @@ void Sapphire::Entity::Player::autoAttack( CharaPtr pTarget )
     effectPacket->setRotation( Util::floatToUInt16Rot( getRot() ) );
 
     Common::EffectEntry entry{};
-    entry.value = damage;
+    entry.value = damage.first;
     entry.effectType = Common::ActionEffectType::Damage;
-    entry.hitSeverity = Common::ActionHitSeverityType::NormalDamage;
-    entry.param = 0x73;
+    entry.param0 = static_cast< uint8_t >( damage.second );
+    entry.param2 = 0x73;
 
     effectPacket->addEffect( entry );
 
@@ -1598,7 +1611,7 @@ void Sapphire::Entity::Player::autoAttack( CharaPtr pTarget )
 
   }
 
-  pTarget->takeDamage( damage );
+  pTarget->takeDamage( damage.first );
 
 }
 
@@ -2130,4 +2143,43 @@ void Sapphire::Entity::Player::setActiveLand( uint8_t land, uint8_t ward )
 Sapphire::Common::ActiveLand Sapphire::Entity::Player::getActiveLand() const
 {
   return m_activeLand;
+}
+
+bool Sapphire::Entity::Player::hasQueuedAction() const
+{
+  return m_pQueuedAction != nullptr;
+}
+
+void Sapphire::Entity::Player::setQueuedAction( Sapphire::World::Action::ActionPtr pAction )
+{
+  m_pQueuedAction = std::move( pAction ); // overwrite previous queued action if any
+}
+
+bool Sapphire::Entity::Player::checkAction()
+{
+  if( m_pCurrentAction == nullptr )
+    return false;
+
+  if( m_pCurrentAction->update() )
+  {
+    if( m_pCurrentAction->isInterrupted() && m_pCurrentAction->getInterruptType() != Common::ActionInterruptType::DamageInterrupt )
+    {
+      // we moved (or whatever not damage interrupt) so we don't want to execute queued cast
+      m_pQueuedAction = nullptr;
+    }
+    m_pCurrentAction = nullptr;
+
+    if( hasQueuedAction() )
+    {
+      sendDebug( "Queued skill start: {0}", m_pQueuedAction->getId() );
+      if( m_pQueuedAction->hasCastTime() )
+      {
+        setCurrentAction( m_pQueuedAction );
+      }
+      m_pQueuedAction->start();
+      m_pQueuedAction = nullptr;
+    }
+  }
+
+  return true;
 }

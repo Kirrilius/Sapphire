@@ -67,7 +67,7 @@ namespace Sapphire::Entity
     /*! play a subevent */
     void playScene( uint32_t eventId, uint32_t scene, uint32_t flags, uint32_t eventParam2, uint32_t eventParam3 );
 
-    void playGilShop( uint32_t eventId, uint32_t flags,
+    void playGilShop( uint32_t eventId, uint32_t flags, uint32_t param1,
                       Event::EventHandler::SceneReturnCallback eventCallback );
 
     void directorPlayScene( uint32_t eventId, uint32_t scene, uint32_t flags, uint32_t eventParam3,
@@ -643,6 +643,11 @@ namespace Sapphire::Entity
     /*! return a const pointer to the mount guide bitmask array */
     const uint8_t* getMountGuideBitmask() const;
 
+    bool checkAction() override;
+
+    bool hasQueuedAction() const;
+
+    void setQueuedAction( World::Action::ActionPtr pAction );
 
     // Spawn handling
     //////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1001,6 +1006,8 @@ namespace Sapphire::Entity
     bool m_onEnterEventDone;
 
     uint32_t m_inventorySequence;
+
+    World::Action::ActionPtr m_pQueuedAction;
 
   private:
     using InventoryMap = std::map< uint16_t, Sapphire::ItemContainerPtr >;

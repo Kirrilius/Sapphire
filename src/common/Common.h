@@ -622,6 +622,7 @@ namespace Sapphire::Common
     TpLoss = 12,
     TpGain = 13,
     GpGain = 14,
+    ApplyStatusEffect = 15,
     /*!
      * @brief Tells the client that it should show combo indicators on actions.
      *
@@ -629,6 +630,7 @@ namespace Sapphire::Common
      * @param value The actionid that starts/continues the combo. eg, 3617 will start a spinning slash and/or syphon strike combo
      */
     StartActionCombo = 28,
+    ComboSucceed = 29,
     Knockback = 33,
     Mount = 38,
     VFX = 59, // links to VFX sheet
@@ -637,11 +639,17 @@ namespace Sapphire::Common
   enum class ActionHitSeverityType : uint8_t
   {
     NormalDamage = 0,
-    CritHeal = 0,
+    NormalHeal = 0,
     CritDamage = 1,
-    NormalHeal = 1,
+    CritHeal = 1,
     DirectHitDamage = 2,
     CritDirectHitDamage = 3
+  };
+
+  enum class ActionEffectResultFlag : uint8_t
+  {
+    None = 0,
+    EffectOnSource = 0x80,
   };
 
   enum ItemActionType : uint16_t
@@ -660,14 +668,14 @@ namespace Sapphire::Common
   struct EffectEntry
   {
     Common::ActionEffectType effectType;
-    Common::ActionHitSeverityType hitSeverity;
-    uint8_t param;
+    uint8_t param0;
+    uint8_t param1;
     /*!
      * @brief Shows an additional percentage in the battle log
      *
      * Has no effect on what is shown and stored in value
      */
-    int8_t bonusPercent;
+    uint8_t param2;
     uint8_t valueMultiplier;      // This multiplies whatever value is in the 'value' param by 10. Possibly a workaround for big numbers
     uint8_t flags;
     int16_t value;

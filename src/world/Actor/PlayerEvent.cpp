@@ -130,7 +130,7 @@ void Sapphire::Entity::Player::playScene( uint32_t eventId, uint32_t scene,
   playScene( eventId, scene, flags, eventParam2, eventParam3, 0, eventCallback );
 }
 
-void Sapphire::Entity::Player::playGilShop( uint32_t eventId, uint32_t flags,
+void Sapphire::Entity::Player::playGilShop( uint32_t eventId, uint32_t flags, uint32_t param1,
                                             Event::EventHandler::SceneReturnCallback eventCallback )
 {
   auto pEvent = bootstrapSceneEvent( eventId, flags );
@@ -141,10 +141,26 @@ void Sapphire::Entity::Player::playGilShop( uint32_t eventId, uint32_t flags,
   pEvent->setEventReturnCallback( eventCallback );
   pEvent->setSceneChainCallback( nullptr );
 
-  auto openGilShopPacket = makeZonePacket< Server::FFXIVIpcEventOpenGilShop >( getId() );
+  auto openGilShopPacket = makeZonePacket< Server::FFXIVIpcEventPlay255 >( getId() );
   openGilShopPacket->data().eventId = eventId;
   openGilShopPacket->data().sceneFlags = flags;
   openGilShopPacket->data().actorId = getId();
+  switch( param1 )
+  {
+    case 1:
+    {
+      openGilShopPacket->data().params[ 0 ] = 0x02;
+      openGilShopPacket->data().params[ 1 ] = 1;
+      openGilShopPacket->data().params[ 2 ] = 0x64;
+      break;
+    }
+    case 2:
+    {
+      openGilShopPacket->data().params[ 0 ] = 0xA2;
+      openGilShopPacket->data().params[ 1 ] = 2;
+      break;
+    }
+  }
 
   openGilShopPacket->data().scene = 10;
 

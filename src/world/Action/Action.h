@@ -2,8 +2,10 @@
 #define _ACTION_H_
 
 #include <Common.h>
+#include "ActionLut.h"
 #include "Util/ActorFilter.h"
 #include "ForwardsZone.h"
+#include "EffectBuilder.h"
 
 namespace Sapphire::Data
 {
@@ -37,6 +39,7 @@ namespace Sapphire::World::Action
     Entity::CharaPtr getSourceChara() const;
 
     bool isInterrupted() const;
+    Common::ActionInterruptType getInterruptType() const;
     void setInterrupted( Common::ActionInterruptType type );
 
     uint32_t getCastTime() const;
@@ -44,6 +47,8 @@ namespace Sapphire::World::Action
 
     uint32_t getAdditionalData() const;
     void setAdditionalData( uint32_t data );
+
+    bool isCorrectCombo() const;
 
     bool isComboAction() const;
 
@@ -84,6 +89,8 @@ namespace Sapphire::World::Action
      * @return true if actors are hit
      */
     bool snapshotAffectedActors( std::vector< Entity::CharaPtr >& actors );
+
+    EffectBuilderPtr getEffectbuilder();
 
     void buildEffects();
 
@@ -143,6 +150,8 @@ namespace Sapphire::World::Action
 
     bool preFilterActor( Entity::Actor& actor ) const;
 
+    bool hasValidLutEntry() const;
+
     uint32_t m_id;
 
     uint16_t m_sequence;
@@ -183,6 +192,8 @@ namespace Sapphire::World::Action
 
     std::vector< World::Util::ActorFilterPtr > m_actorFilters;
     std::vector< Entity::CharaPtr > m_hitActors;
+
+    ActionEntry m_lutEntry;
   };
 }
 

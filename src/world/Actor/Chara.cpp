@@ -438,6 +438,18 @@ void Sapphire::Entity::Chara::heal( uint32_t amount )
   sendStatusUpdate();
 }
 
+void Sapphire::Entity::Chara::restoreMP( uint32_t amount )
+{
+  if( ( m_mp + amount ) > getMaxMp() )
+  {
+    m_mp = getMaxMp();
+  }
+  else
+    m_mp += amount;
+
+  sendStatusUpdate();
+}
+
 /*!
 Send an HpMpTp update to players in range ( and potentially to self )
 TODO: poor naming, should be changed. Status is not HP. Also should be virtual
@@ -496,8 +508,8 @@ void Sapphire::Entity::Chara::autoAttack( CharaPtr pTarget )
     Common::EffectEntry effectEntry{};
     effectEntry.value = static_cast< int16_t >( damage );
     effectEntry.effectType = ActionEffectType::Damage;
-    effectEntry.hitSeverity = ActionHitSeverityType::NormalDamage;
-    effectEntry.param = 0x71;
+    effectEntry.param0 = static_cast< uint8_t >( ActionHitSeverityType::NormalDamage );
+    effectEntry.param2 = 0x71;
     effectPacket->addEffect( effectEntry );
 
     sendToInRangeSet( effectPacket );
@@ -523,11 +535,13 @@ void Sapphire::Entity::Chara::addStatusEffect( StatusEffect::StatusEffectPtr pEf
   statusEffectAdd->data().actor_id = pEffect->getTargetActorId();
   statusEffectAdd->data().current_hp = getHp();
   statusEffectAdd->data().current_mp = static_cast< uint16_t >( getMp() );
-  statusEffectAdd->data().current_tp = getTp();
+  //statusEffectAdd->data().current_tp = getTp();
   statusEffectAdd->data().max_hp = getMaxHp();
   statusEffectAdd->data().max_mp = static_cast< uint16_t >( getMaxMp() );
-  statusEffectAdd->data().max_something = 1;
+  //statusEffectAdd->data().max_something = 1;
   //statusEffectAdd->data().unknown2 = 28;
+  statusEffectAdd->data().classId = static_cast< uint8_t >(getClass());
+  statusEffectAdd->data().unkFlag = 1;
 
   auto& status = statusEffectAdd->data().statusEntries[0];
 
